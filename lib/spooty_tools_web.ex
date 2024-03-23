@@ -44,6 +44,7 @@ defmodule SpootyToolsWeb do
 
       import Plug.Conn
       import SpootyToolsWeb.Gettext
+      import Phoenix.LiveView.Controller
 
       unquote(verified_routes())
     end

@@ -1,18 +1,19 @@
 defmodule SpootyTools.Spotify.Playlist do
-  def get_artists_from_playlist(token) do
+  def get_artists_from_playlist(pid, token) do
     with base_request <- base_request(token),
          {:ok, %{body: %{"total" => total} = body}} <- Req.get(base_request),
          remaining_calls <- determine_remaining_calls(total),
-         async_artists <- async_fetch_remaining_items(remaining_calls, token),
+         :ok <- async_fetch_remaining_items(pid, remaining_calls, token),
          initial_artists <- map_to_artists(body) do
-      {:ok, List.flatten([initial_artists, async_artists])}
+      send(pid, {:loaded_data, :artists, initial_artists})
+      :ok
     else
       e ->
         e
     end
   end
 
-  defp async_fetch_remaining_items(calls, token) do
+  defp async_fetch_remaining_items(pid, calls, token) do
     1..calls
     |> Enum.map(fn multiplier ->
       Task.async(fn ->
@@ -20,13 +21,14 @@ defmodule SpootyTools.Spotify.Playlist do
              request <- Req.update(base, params: [offset: multiplier * 50]),
              {:ok, %{body: body}} <- Req.get(request),
              artists <- map_to_artists(body) do
-          artists
+          send(pid, {:loaded_data, :artists, artists})
         else
           _ -> []
         end
       end)
     end)
-    |> Enum.flat_map(&Task.await/1)
+
+    :ok
   end
 
   defp determine_remaining_calls(total) when total <= 50, do: 0

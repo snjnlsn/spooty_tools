@@ -14,11 +14,21 @@ defmodule SpootyToolsWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :ensure_token do
+    plug SpootyToolsWeb.SpotifyAuth
+  end
+
   scope "/", SpootyToolsWeb do
     pipe_through :browser
 
-    get "/", PageController, :authorize
     get "/callback", PageController, :callback
+    get "/error", PageController, :error
+  end
+
+  scope "/", SpootyToolsWeb do
+    pipe_through [:browser, :ensure_token]
+
+    live "/", HomeLive
   end
 
   # Other scopes may use custom stacks.
